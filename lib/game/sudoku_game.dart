@@ -5,6 +5,7 @@ class SudokuGame {
   late List<List<int>> board;
   late final List<List<bool>> fixed;
   int mistakes = 0;
+  int hintsUsed = 0;
 
   SudokuGame(this.puzzle, this.solution) {
     for (final grid in [puzzle, solution]) {
@@ -89,6 +90,21 @@ class SudokuGame {
     return true;
   }
 
+  /// Reveals the correct value in the first unresolved cell.
+  /// Returns the revealed coordinate or null when already solved.
+  (int, int)? revealHint() {
+    for (var r = 0; r < 9; r++) {
+      for (var c = 0; c < 9; c++) {
+        if (board[r][c] != solution[r][c] && !fixed[r][c]) {
+          board[r][c] = solution[r][c];
+          hintsUsed++;
+          return (r, c);
+        }
+      }
+    }
+    return null;
+  }
+
   bool get complete {
     for (var r = 0; r < 9; r++) {
       for (var c = 0; c < 9; c++) {
@@ -101,5 +117,6 @@ class SudokuGame {
   void restart() {
     board = puzzle.map((r) => List<int>.from(r)).toList();
     mistakes = 0;
+    hintsUsed = 0;
   }
 }
