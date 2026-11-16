@@ -1,10 +1,10 @@
-name: Flutter quality checks
+name: Flutter quality and Android debug build
 on:
   push:
     branches: [main]
   pull_request:
 jobs:
-  analyze-test:
+  analyze-test-build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -13,9 +13,13 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+      - name: Generate missing Android/iOS project scaffolds
+        run: flutter create --platforms=android,ios --project-name game_005_sudoku_master .
       - name: Resolve dependencies
         run: flutter pub get
       - name: Analyze Dart source
         run: flutter analyze
       - name: Run unit and widget tests
         run: flutter test
+      - name: Build Android debug APK
+        run: flutter build apk --debug
