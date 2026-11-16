@@ -90,6 +90,17 @@ class _SudokuScreenState extends State<SudokuScreen> {
             icon: const Icon(Icons.backspace_outlined),
             label: const Text('Erase'),
           ),
+          TextButton.icon(
+            onPressed: game.complete ? null : () => setState(() {
+              final hint = game.revealHint();
+              if (hint != null) {
+                selectedRow = hint.$1;
+                selectedColumn = hint.$2;
+              }
+            }),
+            icon: const Icon(Icons.lightbulb_outline),
+            label: Text('Hint (${game.hintsUsed} used)'),
+          ),
           Text(game.complete ? 'Puzzle solved!' : 'Select a cell and enter a number.',
             textAlign: TextAlign.center),
         ])),
