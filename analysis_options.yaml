@@ -1,0 +1,8 @@
+include: package:flutter_lints/flutter.yaml
+
+# Flutter stable 3.47 has begun migrating Material imports to material_ui.
+# Keep deprecation warnings visible in source review but do not block prototype
+# validation until the migration and supported dependency versions are verified.
+analyzer:
+  errors:
+    deprecated_member_use: ignore
