@@ -6,6 +6,24 @@ class SudokuGame {
   late final List<List<bool>> fixed;
   int mistakes = 0;
   int hintsUsed = 0;
+  final Map<int, Set<int>> pencilMarks = {};
+
+  int _cellIndex(int row, int column) => row * 9 + column;
+
+  Set<int> notesAt(int row, int column) =>
+      Set<int>.unmodifiable(pencilMarks[_cellIndex(row, column)] ?? <int>{});
+
+  bool toggleNote(int row, int column, int digit) {
+    if (row < 0 || row >= 9 || column < 0 || column >= 9 ||
+        digit < 1 || digit > 9 || fixed[row][column] ||
+        board[row][column] != 0) return false;
+    final index = _cellIndex(row, column);
+    final notes = pencilMarks.putIfAbsent(index, () => <int>{});
+    if (!notes.add(digit)) notes.remove(digit);
+    if (notes.isEmpty) pencilMarks.remove(index);
+    return true;
+  }
+
 
   SudokuGame(this.puzzle, this.solution) {
     for (final grid in [puzzle, solution]) {
@@ -86,6 +104,7 @@ class SudokuGame {
     if (row < 0 || row >= 9 || column < 0 || column >= 9 ||
         digit < 0 || digit > 9 || fixed[row][column]) { return false; }
     board[row][column] = digit;
+    pencilMarks.remove(_cellIndex(row, column));
     if (digit != 0 && digit != solution[row][column]) { mistakes++; }
     return true;
   }
@@ -97,6 +116,7 @@ class SudokuGame {
       for (var c = 0; c < 9; c++) {
         if (board[r][c] != solution[r][c] && !fixed[r][c]) {
           board[r][c] = solution[r][c];
+          pencilMarks.remove(_cellIndex(r, c));
           hintsUsed++;
           return (r, c);
         }
@@ -118,5 +138,6 @@ class SudokuGame {
     board = puzzle.map((r) => List<int>.from(r)).toList();
     mistakes = 0;
     hintsUsed = 0;
+    pencilMarks.clear();
   }
 }
