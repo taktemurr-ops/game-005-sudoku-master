@@ -26,6 +26,14 @@ void main() {
     expect(game.mistakes, 0);
     expect(game.board[0][2], 0);
   });
+  test('hint fills the first unresolved cell and tracks usage', () {
+    final game = SudokuGame.demo();
+    expect(game.revealHint(), (0, 2));
+    expect(game.board[0][2], 4);
+    expect(game.hintsUsed, 1);
+    game.restart();
+    expect(game.hintsUsed, 0);
+  });
   test('invalid box duplicates are detected', () {
     final game = SudokuGame.demo();
     game.board[0][2] = 5;
