@@ -19,8 +19,12 @@ class SudokuGame {
         board[row][column] != 0) return false;
     final index = _cellIndex(row, column);
     final notes = pencilMarks.putIfAbsent(index, () => <int>{});
-    if (!notes.add(digit)) notes.remove(digit);
-    if (notes.isEmpty) pencilMarks.remove(index);
+    if (!notes.add(digit)) {
+      notes.remove(digit);
+    }
+    if (notes.isEmpty) {
+      pencilMarks.remove(index);
+    }
     return true;
   }
 
