@@ -24,6 +24,7 @@ class _SudokuScreenState extends State<SudokuScreen> {
   SudokuGame game = SudokuGame.demo();
   int selectedRow = 0;
   int selectedColumn = 2;
+  bool noteMode = false;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -45,13 +46,17 @@ class _SudokuScreenState extends State<SudokuScreen> {
                 final v = game.board[r][c];
                 final selected = r == selectedRow && c == selectedColumn;
                 final clue = game.fixed[r][c];
+                final notes = game.notesAt(r, c).toList()..sort();
                 return Expanded(child: InkWell(
                   key: ValueKey('sudoku-$r-$c'),
                   onTap: () => setState(() {
                     selectedRow = r;
                     selectedColumn = c;
                   }),
-                  child: Container(
+                  child: Semantics(
+                    label: 'Row ${r + 1}, column ${c + 1}, ${v == 0 ? 'empty' : v}, notes ${notes.join(', ')}',
+                    button: true,
+                    child: Container(
                     decoration: BoxDecoration(
                       color: selected ? const Color(0xFF317EA1) :
                         clue ? const Color(0xFF1C3149) : const Color(0xFF263F55),
@@ -65,11 +70,15 @@ class _SudokuScreenState extends State<SudokuScreen> {
                       ),
                     ),
                     alignment: Alignment.center,
-                    child: FittedBox(child: Text(v == 0 ? '' : '$v',
-                      style: TextStyle(fontSize: 22, fontWeight: clue ?
-                        FontWeight.bold : FontWeight.normal,
-                        color: clue ? Colors.white : Colors.cyanAccent))),
-                  ),
+                    child: v == 0 && notes.isNotEmpty
+                      ? FittedBox(child: Text(notes.join(' '),
+                          style: const TextStyle(fontSize: 10, color: Colors.amberAccent),
+                          textAlign: TextAlign.center))
+                      : FittedBox(child: Text(v == 0 ? '' : '$v',
+                          style: TextStyle(fontSize: 22, fontWeight: clue ?
+                            FontWeight.bold : FontWeight.normal,
+                            color: clue ? Colors.white : Colors.cyanAccent))),
+                  )),
                 ));
               })),
             )),
@@ -79,12 +88,19 @@ class _SudokuScreenState extends State<SudokuScreen> {
             children: List.generate(9, (i) => SizedBox(
               width: 49, child: FilledButton.tonal(
                 onPressed: () => setState(() =>
-                  game.input(selectedRow, selectedColumn, i + 1)),
+                  noteMode
+                    ? game.toggleNote(selectedRow, selectedColumn, i + 1)
+                    : game.input(selectedRow, selectedColumn, i + 1)),
                 child: Text('${i+1}'),
               ),
             )),
           ),
           const SizedBox(height: 12),
+          SwitchListTile.adaptive(
+            title: const Text('Pencil notes'),
+            value: noteMode,
+            onChanged: (value) => setState(() => noteMode = value),
+          ),
           TextButton.icon(
             onPressed: () => setState(() => game.input(selectedRow, selectedColumn, 0)),
             icon: const Icon(Icons.backspace_outlined),
