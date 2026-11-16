@@ -16,7 +16,9 @@ class SudokuGame {
   bool toggleNote(int row, int column, int digit) {
     if (row < 0 || row >= 9 || column < 0 || column >= 9 ||
         digit < 1 || digit > 9 || fixed[row][column] ||
-        board[row][column] != 0) return false;
+        board[row][column] != 0) {
+      return false;
+    }
     final index = _cellIndex(row, column);
     final notes = pencilMarks.putIfAbsent(index, () => <int>{});
     if (!notes.add(digit)) {
