@@ -76,7 +76,7 @@ class SudokuGame {
         if (!valid([
           for (var dr = 0; dr < 3; dr++)
             for (var dc = 0; dc < 3; dc++) grid[br + dr][bc + dc]
-        ])) return false;
+        ])) { return false; }
       }
     }
     return true;
@@ -84,9 +84,9 @@ class SudokuGame {
 
   bool input(int row, int column, int digit) {
     if (row < 0 || row >= 9 || column < 0 || column >= 9 ||
-        digit < 0 || digit > 9 || fixed[row][column]) return false;
+        digit < 0 || digit > 9 || fixed[row][column]) { return false; }
     board[row][column] = digit;
-    if (digit != 0 && digit != solution[row][column]) mistakes++;
+    if (digit != 0 && digit != solution[row][column]) { mistakes++; }
     return true;
   }
 
