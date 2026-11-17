@@ -115,6 +115,39 @@ class SudokuGame {
     return true;
   }
 
+  /// Valid candidates from the visible board only; never reads the solution.
+  /// A free, non-destructive aid that does not require an advertisement.
+  Set<int> candidatesAt(int row, int column) {
+    if (row < 0 || row >= 9 || column < 0 || column >= 9 ||
+        fixed[row][column] || board[row][column] != 0) {
+      return <int>{};
+    }
+    final forbidden = <int>{};
+    for (var i = 0; i < 9; i++) {
+      forbidden.add(board[row][i]);
+      forbidden.add(board[i][column]);
+    }
+    final boxRow = (row ~/ 3) * 3;
+    final boxColumn = (column ~/ 3) * 3;
+    for (var r = boxRow; r < boxRow + 3; r++) {
+      for (var c = boxColumn; c < boxColumn + 3; c++) {
+        forbidden.add(board[r][c]);
+      }
+    }
+    return {for (var digit = 1; digit <= 9; digit++) if (!forbidden.contains(digit)) digit};
+  }
+
+  /// Returns a naked single found by logic, without modifying the puzzle.
+  (int, int, int)? nextLogicalHint() {
+    for (var r = 0; r < 9; r++) {
+      for (var c = 0; c < 9; c++) {
+        final candidates = candidatesAt(r, c);
+        if (candidates.length == 1) return (r, c, candidates.single);
+      }
+    }
+    return null;
+  }
+
   /// Reveals the correct value in the first unresolved cell.
   /// Returns the revealed coordinate or null when already solved.
   (int, int)? revealHint() {
