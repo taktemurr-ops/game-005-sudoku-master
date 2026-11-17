@@ -108,6 +108,27 @@ class _SudokuScreenState extends State<SudokuScreen> {
           ),
           TextButton.icon(
             onPressed: game.complete ? null : () => setState(() {
+              final hint = game.nextLogicalHint();
+              if (hint != null) {
+                selectedRow = hint.$1;
+                selectedColumn = hint.$2;
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text('Logical hint: row ${hint.$1 + 1}, column ${hint.$2 + 1} = ${hint.$3}'),
+                ));
+              } else {
+                final options = game.candidatesAt(selectedRow, selectedColumn).toList()..sort();
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(options.isEmpty
+                    ? 'Select an empty cell to see candidates.'
+                    : 'Candidates: ${options.join(', ')}'),
+                ));
+              }
+            }),
+            icon: const Icon(Icons.psychology_outlined),
+            label: const Text('Free logical hint (no ad)'),
+          ),
+          TextButton.icon(
+            onPressed: game.complete ? null : () => setState(() {
               final hint = game.revealHint();
               if (hint != null) {
                 selectedRow = hint.$1;
