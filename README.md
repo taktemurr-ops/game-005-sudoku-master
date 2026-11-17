@@ -1,26 +1,37 @@
-# Sudoku Master
+# Sudoku Master — Game Studio 100 / Game 005
 
-Game Studio 100 | Android + iOS | Flutter | **prototype in progress**
+Flutter offline Sudoku for Android/iOS. This update extends the **existing**
+private repository, preserving independently developed monetization policy
+modules and their tests. This is not a new repository.
 
-## Current implemented source
+## Game functionality
 
-9×9 number entry, immutable givens, row/column/box validation, mistake counting, restart and a demonstration puzzle.
+Five difficulty/day modes, deterministic daily seed, shuffled solved boards,
+unique-solution puzzle creation, 9×9 touch input, row/column/box highlighting,
+undo, erasable guesses, pencil notes, legal candidate autofill, free logical
+hint, optional reveal, mistake limit, pause, timer, statistics and best times.
+Auto-save/restore, local data erasure, contrast, haptic setting, TR/EN/AR UI
+and semantic cell descriptions. No account or Internet required.
 
-- Gameplay implementation: `lib/game/sudoku_game.dart`
-- Unit/EditMode test source: `test/sudoku_game_test.dart`
-- Interactive Flutter screen: `lib/main.dart`
- 
- 
-**Verification status:** source and test cases are committed, but compilation, test execution,
-device builds and complete gameplay verification have NOT been performed.
-Run `flutter pub get`, `flutter test`, `flutter run` in a Flutter SDK environment.
+## Development
 
-## Remaining development
+```bash
+flutter create --platforms=android,ios --project-name game_005_sudoku_master .
+flutter pub get
+flutter analyze --fatal-infos
+flutter test
+flutter build apk --debug
+```
 
-- Game design research: supported competitor feature matrix and user experience improvements
-- Full playable levels, UI/UX polish, audio, animations, save/resume and accessibility
-- Multiple modes, progression, difficulty and content tooling
-- Device testing, CI, privacy permissions and compliant ads/in-app purchases
-- Android and iOS release builds and store verification
+GitHub Actions covers Flutter quality and Android debug APK; an optional
+workflow checks unsigned Android AAB and iOS compilation. Passing CI does not
+substitute physical-device testing, App Store signing or store approval.
 
-This is an original prototype, NOT a finished production game.
+## Monetization and privacy
+
+No ad SDK, purchase screen, tracking or account collection in the gameplay UI.
+The pre-existing monetization policy modules are retained for later integration
+but are not wired to real advertising/billing. A functioning purchase flow must
+not be represented as complete without verified store/backend infrastructure.
+
+See `docs/RELEASE_READINESS.md` and the repository's `/issues/1` for acceptance.

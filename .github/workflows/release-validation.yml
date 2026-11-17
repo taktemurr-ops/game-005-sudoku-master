@@ -1,0 +1,41 @@
+name: Android AAB and unsigned iOS compilation
+on:
+  workflow_dispatch:
+  pull_request:
+jobs:
+  android-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter create --platforms=android,ios --project-name game_005_sudoku_master .
+      - run: flutter pub get
+      - run: flutter analyze --fatal-infos
+      - run: flutter test
+      - run: flutter build appbundle --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: game-005-android-unsigned-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+  ios-compile:
+    runs-on: macos-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter create --platforms=android,ios --project-name game_005_sudoku_master .
+      - run: flutter pub get
+      - run: flutter build ios --release --no-codesign
+      - uses: actions/upload-artifact@v4
+        with:
+          name: game-005-ios-unsigned-runner
+          path: build/ios/iphoneos/Runner.app/**
+          if-no-files-found: error

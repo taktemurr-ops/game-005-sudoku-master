@@ -1,58 +1,44 @@
-/// Pure Dart Sudoku model. Grid values are 0 (empty) or 1–9.
+/// Offline Sudoku model. Grid cells are 0 (empty) or 1–9. No SDK dependencies.
 class SudokuGame {
-  final List<List<int>> puzzle;
-  final List<List<int>> solution;
+  late final List<List<int>> puzzle;
+  late final List<List<int>> solution;
   late List<List<int>> board;
   late final List<List<bool>> fixed;
   int mistakes = 0;
   int hintsUsed = 0;
-  final Map<int, Set<int>> pencilMarks = {};
+  final Map<int, Set<int>> pencilMarks = <int, Set<int>>{};
+  final List<_UndoState> _history = <_UndoState>[];
 
-  int _cellIndex(int row, int column) => row * 9 + column;
-
-  Set<int> notesAt(int row, int column) =>
-      Set<int>.unmodifiable(pencilMarks[_cellIndex(row, column)] ?? <int>{});
-
-  bool toggleNote(int row, int column, int digit) {
-    if (row < 0 || row >= 9 || column < 0 || column >= 9 ||
-        digit < 1 || digit > 9 || fixed[row][column] ||
-        board[row][column] != 0) {
-      return false;
-    }
-    final index = _cellIndex(row, column);
-    final notes = pencilMarks.putIfAbsent(index, () => <int>{});
-    if (!notes.add(digit)) {
-      notes.remove(digit);
-    }
-    if (notes.isEmpty) {
-      pencilMarks.remove(index);
-    }
-    return true;
-  }
-
-
-  SudokuGame(this.puzzle, this.solution) {
-    for (final grid in [puzzle, solution]) {
-      if (grid.length != 9 || grid.any((row) => row.length != 9)) {
-        throw ArgumentError('Grid must be 9×9.');
-      }
-      if (grid.any((row) => row.any((n) => n < 0 || n > 9))) {
-        throw ArgumentError('Digits must be 0–9.');
+  SudokuGame(List<List<int>> initialPuzzle, List<List<int>> initialSolution) {
+    for (final grid in [initialPuzzle, initialSolution]) {
+      if (grid.length != 9 || grid.any((r) => r.length != 9) ||
+          grid.any((row) => row.any((digit) => digit < 0 || digit > 9))) {
+        throw ArgumentError('Sudoku grids must be 9×9 with digits 0–9.');
       }
     }
-    if (!isValidGrid(solution) || solution.any((r) => r.contains(0))) {
-      throw ArgumentError('Solution must be a complete valid Sudoku.');
+    if (!isValidGrid(initialSolution) ||
+        initialSolution.any((row) => row.contains(0))) {
+      throw ArgumentError('Solution must be a valid complete Sudoku.');
+    }
+    if (!isValidGrid(initialPuzzle)) {
+      throw ArgumentError('Contradictory puzzle clues.');
     }
     for (var r = 0; r < 9; r++) {
       for (var c = 0; c < 9; c++) {
-        if (puzzle[r][c] != 0 && puzzle[r][c] != solution[r][c]) {
-          throw ArgumentError('Puzzle clue contradicts solution.');
+        if (initialPuzzle[r][c] != 0 &&
+            initialPuzzle[r][c] != initialSolution[r][c]) {
+          throw ArgumentError('Puzzle clues contradict the supplied solution.');
         }
       }
     }
-    board = puzzle.map((r) => List<int>.from(r)).toList();
-    fixed = puzzle.map((r) => r.map((n) => n != 0).toList()).toList();
+    puzzle = _copy(initialPuzzle);
+    solution = _copy(initialSolution);
+    board = _copy(puzzle);
+    fixed = puzzle.map((row) => row.map((digit) => digit != 0).toList()).toList();
   }
+
+  static List<List<int>> _copy(List<List<int>> grid) =>
+      grid.map((row) => List<int>.from(row)).toList();
 
   factory SudokuGame.demo() {
     final solution = [
@@ -81,81 +67,120 @@ class SudokuGame {
   }
 
   static bool isValidGrid(List<List<int>> grid) {
-    if (grid.length != 9 || grid.any((r) => r.length != 9)) return false;
-    bool valid(Iterable<int> numbers) {
-      final used = <int>{};
-      for (final number in numbers) {
-        if (number < 0 || number > 9) return false;
-        if (number != 0 && !used.add(number)) return false;
+    if (grid.length != 9 || grid.any((row) => row.length != 9)) return false;
+    bool valid(Iterable<int> values) {
+      final seen = <int>{};
+      for (final digit in values) {
+        if (digit < 0 || digit > 9 || (digit > 0 && !seen.add(digit))) {
+          return false;
+        }
       }
       return true;
     }
     for (var i = 0; i < 9; i++) {
-      if (!valid(grid[i]) || !valid(List.generate(9, (r) => grid[r][i]))) {
+      if (!valid(grid[i]) || !valid([for (var r = 0; r < 9; r++) grid[r][i]])) {
         return false;
       }
     }
-    for (var br = 0; br < 9; br += 3) {
-      for (var bc = 0; bc < 9; bc += 3) {
-        if (!valid([
-          for (var dr = 0; dr < 3; dr++)
-            for (var dc = 0; dc < 3; dc++) grid[br + dr][bc + dc]
-        ])) { return false; }
+    for (var r = 0; r < 9; r += 3) {
+      for (var c = 0; c < 9; c += 3) {
+        if (!valid([for (var dr = 0; dr < 3; dr++)
+          for (var dc = 0; dc < 3; dc++) grid[r + dr][c + dc]])) {
+          return false;
+        }
       }
     }
+    return true;
+  }
+
+  int _index(int r, int c) => r * 9 + c;
+  bool _inBounds(int r, int c) => r >= 0 && r < 9 && c >= 0 && c < 9;
+  bool get canUndo => _history.isNotEmpty;
+  bool get complete => List.generate(9, (r) => r)
+      .every((r) => List.generate(9, (c) => c)
+          .every((c) => board[r][c] == solution[r][c]));
+
+  Set<int> notesAt(int row, int column) => _inBounds(row, column)
+      ? Set<int>.unmodifiable(pencilMarks[_index(row, column)] ?? <int>{})
+      : <int>{};
+
+  void _recordUndo() {
+    _history.add(_UndoState(_copy(board), mistakes, hintsUsed,
+        {for (final entry in pencilMarks.entries) entry.key: Set<int>.from(entry.value)}));
+    if (_history.length > 100) _history.removeAt(0);
+  }
+
+  bool undo() {
+    if (_history.isEmpty) return false;
+    final previous = _history.removeLast();
+    board = _copy(previous.board);
+    mistakes = previous.mistakes;
+    hintsUsed = previous.hintsUsed;
+    pencilMarks
+      ..clear()
+      ..addAll({for (final entry in previous.notes.entries)
+        entry.key: Set<int>.from(entry.value)});
+    return true;
+  }
+
+  bool toggleNote(int row, int column, int digit) {
+    if (!_inBounds(row, column) || digit < 1 || digit > 9 ||
+        fixed[row][column] || board[row][column] != 0) return false;
+    _recordUndo();
+    final index = _index(row, column);
+    final marks = pencilMarks.putIfAbsent(index, () => <int>{});
+    if (!marks.add(digit)) marks.remove(digit);
+    if (marks.isEmpty) pencilMarks.remove(index);
     return true;
   }
 
   bool input(int row, int column, int digit) {
-    if (row < 0 || row >= 9 || column < 0 || column >= 9 ||
-        digit < 0 || digit > 9 || fixed[row][column]) { return false; }
+    if (!_inBounds(row, column) || digit < 0 || digit > 9 || fixed[row][column]) {
+      return false;
+    }
+    if (board[row][column] == digit && !pencilMarks.containsKey(_index(row, column))) {
+      return true;
+    }
+    _recordUndo();
     board[row][column] = digit;
-    pencilMarks.remove(_cellIndex(row, column));
-    if (digit != 0 && digit != solution[row][column]) { mistakes++; }
+    pencilMarks.remove(_index(row, column));
+    if (digit != 0 && digit != solution[row][column]) mistakes++;
     return true;
   }
 
-  /// Valid candidates from the visible board only; never reads the solution.
-  /// A free, non-destructive aid that does not require an advertisement.
   Set<int> candidatesAt(int row, int column) {
-    if (row < 0 || row >= 9 || column < 0 || column >= 9 ||
-        fixed[row][column] || board[row][column] != 0) {
-      return <int>{};
-    }
-    final forbidden = <int>{};
+    if (!_inBounds(row, column) || fixed[row][column] ||
+        board[row][column] != 0) return <int>{};
+    final used = <int>{};
     for (var i = 0; i < 9; i++) {
-      forbidden.add(board[row][i]);
-      forbidden.add(board[i][column]);
+      used.add(board[row][i]);
+      used.add(board[i][column]);
     }
-    final boxRow = (row ~/ 3) * 3;
-    final boxColumn = (column ~/ 3) * 3;
-    for (var r = boxRow; r < boxRow + 3; r++) {
-      for (var c = boxColumn; c < boxColumn + 3; c++) {
-        forbidden.add(board[r][c]);
+    for (var r = row ~/ 3 * 3; r < row ~/ 3 * 3 + 3; r++) {
+      for (var c = column ~/ 3 * 3; c < column ~/ 3 * 3 + 3; c++) {
+        used.add(board[r][c]);
       }
     }
-    return {for (var digit = 1; digit <= 9; digit++) if (!forbidden.contains(digit)) digit};
+    return {for (var n = 1; n <= 9; n++) if (!used.contains(n)) n};
   }
 
-  /// Returns a naked single found by logic, without modifying the puzzle.
   (int, int, int)? nextLogicalHint() {
     for (var r = 0; r < 9; r++) {
       for (var c = 0; c < 9; c++) {
-        final candidates = candidatesAt(r, c);
-        if (candidates.length == 1) return (r, c, candidates.single);
+        final options = candidatesAt(r, c);
+        if (options.length == 1) return (r, c, options.single);
       }
     }
     return null;
   }
 
-  /// Reveals the correct value in the first unresolved cell.
-  /// Returns the revealed coordinate or null when already solved.
   (int, int)? revealHint() {
     for (var r = 0; r < 9; r++) {
       for (var c = 0; c < 9; c++) {
-        if (board[r][c] != solution[r][c] && !fixed[r][c]) {
+        if (!fixed[r][c] && board[r][c] != solution[r][c]) {
+          _recordUndo();
           board[r][c] = solution[r][c];
-          pencilMarks.remove(_cellIndex(r, c));
+          pencilMarks.remove(_index(r, c));
           hintsUsed++;
           return (r, c);
         }
@@ -164,19 +189,94 @@ class SudokuGame {
     return null;
   }
 
-  bool get complete {
+  /// Adds legal candidates to all empty cells without guessing the solution.
+  void fillPencilMarks() {
+    _recordUndo();
     for (var r = 0; r < 9; r++) {
       for (var c = 0; c < 9; c++) {
-        if (board[r][c] != solution[r][c]) return false;
+        final options = candidatesAt(r, c);
+        final index = _index(r, c);
+        if (options.isNotEmpty) {
+          pencilMarks[index] = options;
+        } else {
+          pencilMarks.remove(index);
+        }
       }
     }
-    return true;
   }
 
   void restart() {
-    board = puzzle.map((r) => List<int>.from(r)).toList();
+    board = _copy(puzzle);
     mistakes = 0;
     hintsUsed = 0;
     pencilMarks.clear();
+    _history.clear();
   }
+
+  Map<String, dynamic> toSnapshot() => {
+    'schema': 2,
+    'puzzle': _copy(puzzle),
+    'solution': _copy(solution),
+    'board': _copy(board),
+    'mistakes': mistakes,
+    'hintsUsed': hintsUsed,
+    'notes': {for (final entry in pencilMarks.entries)
+      entry.key.toString(): (entry.value.toList()..sort())},
+  };
+
+  /// Untrusted stored state is strictly validated; broken saves are ignored.
+  static SudokuGame? fromSnapshot(Object? raw) {
+    try {
+      if (raw is! Map<String, dynamic> || raw['schema'] != 2) return null;
+      List<List<int>>? parseGrid(Object? value) {
+        if (value is! List || value.length != 9) return null;
+        final result = <List<int>>[];
+        for (final row in value) {
+          if (row is! List || row.length != 9 || row.any((n) => n is! int || n < 0 || n > 9)) {
+            return null;
+          }
+          result.add(row.cast<int>().toList());
+        }
+        return result;
+      }
+      final puzzle = parseGrid(raw['puzzle']);
+      final solution = parseGrid(raw['solution']);
+      final board = parseGrid(raw['board']);
+      if (puzzle == null || solution == null || board == null) return null;
+      final mistakes = raw['mistakes'];
+      final hintsUsed = raw['hintsUsed'];
+      if (mistakes is! int || mistakes < 0 || mistakes > 10000 ||
+          hintsUsed is! int || hintsUsed < 0 || hintsUsed > 81) return null;
+      final game = SudokuGame(puzzle, solution);
+      for (var r = 0; r < 9; r++) {
+        for (var c = 0; c < 9; c++) {
+          if (game.fixed[r][c] && board[r][c] != puzzle[r][c]) return null;
+        }
+      }
+      game.board = board;
+      game.mistakes = mistakes;
+      game.hintsUsed = hintsUsed;
+      final notes = raw['notes'];
+      if (notes is! Map) return null;
+      for (final entry in notes.entries) {
+        final index = int.tryParse(entry.key.toString());
+        if (index == null || index < 0 || index >= 81 ||
+            entry.value is! List ||
+            (entry.value as List).any((n) => n is! int || n < 1 || n > 9) ||
+            board[index ~/ 9][index % 9] != 0) return null;
+        game.pencilMarks[index] = (entry.value as List).cast<int>().toSet();
+      }
+      return game;
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+class _UndoState {
+  final List<List<int>> board;
+  final int mistakes;
+  final int hintsUsed;
+  final Map<int, Set<int>> notes;
+  const _UndoState(this.board, this.mistakes, this.hintsUsed, this.notes);
 }

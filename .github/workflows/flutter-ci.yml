@@ -1,4 +1,4 @@
-name: Flutter quality and Android debug build
+name: Sudoku Flutter quality and Android debug
 on:
   push:
     branches: [main]
@@ -6,6 +6,7 @@ on:
 jobs:
   analyze-test-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     permissions:
       contents: read
     steps:
@@ -13,17 +14,18 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-      - name: Generate missing Android/iOS project scaffolds
+          cache: true
+      - name: Create Flutter Android and iOS shells
         run: flutter create --platforms=android,ios --project-name game_005_sudoku_master .
       - name: Resolve dependencies
         run: flutter pub get
-      - name: Analyze Dart source
-        run: flutter analyze
-      - name: Run unit and widget tests
-        run: flutter test
+      - name: Analyze all source files
+        run: flutter analyze --fatal-infos
+      - name: Execute unit, widget and persistence tests
+        run: flutter test --reporter expanded
       - name: Build Android debug APK
         run: flutter build apk --debug
-      - name: Publish debug APK artifact
+      - name: Attach tested APK
         uses: actions/upload-artifact@v4
         with:
           name: game-005-sudoku-master-debug-apk
