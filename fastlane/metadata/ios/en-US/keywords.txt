@@ -1,0 +1,1 @@
+sudoku,puzzle,number,logic,brain,daily,offline

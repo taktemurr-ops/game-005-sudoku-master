@@ -1,37 +1,58 @@
-# Sudoku Master — Game Studio 100 / Game 005
+# Sudoku Ustası · Sudoku Master
 
-Flutter offline Sudoku for Android/iOS. This update extends the **existing**
-private repository, preserving independently developed monetization policy
-modules and their tests. This is not a new repository.
+**Game Studio 100 · #005 · Bulmaca ve Zekâ** · Flutter · Android · iOS · Web
 
-## Game functionality
+Klasik ve çapraz Sudoku, sınırsız bulmaca!
 
-Five difficulty/day modes, deterministic daily seed, shuffled solved boards,
-unique-solution puzzle creation, 9×9 touch input, row/column/box highlighting,
-undo, erasable guesses, pencil notes, legal candidate autofill, free logical
-hint, optional reveal, mistake limit, pause, timer, statistics and best times.
-Auto-save/restore, local data erasure, contrast, haptic setting, TR/EN/AR UI
-and semantic cell descriptions. No account or Internet required.
+## Oyun
 
-## Development
+Klasik 9×9 Sudoku ve çapraz (X) Sudoku.
+
+- Tek çözümlü bulmacalar (her biri benzersizlik testinden geçer), 10 zorluk seviyesi (46→24 ipucu)
+- Not modu, otomatik notlar, çakışma vurgusu, aynı rakam vurgusu, kalan rakam sayacı
+- **Mekanikler:** çapraz sudoku, 3 hata hakkı, süreli bölümler
+- **Modlar:** Macera, Sonsuz, Zamana karşı, Zen (hata affı), Günün/Haftanın sudokusu, 150 meydan okuma
+- Klavye desteği (1-9, ok tuşları, sil)
+
+## Bütün oyunlarda ortak sistemler
+
+| Sistem | Durum | Dosya |
+|---|---|---|
+| 50.000 bölüm + sonsuz bölüm (seed ile deterministik, her bölüm çözülebilirlik testinden geçer) | ✅ | `lib/core/level_plan.dart`, `lib/game/rules.dart` |
+| 500 dünya, her 10 bölümde zorluk, her 50 bölümde yeni mekanik kombinasyonu, her 100 bölümde tema, her 1000 bölümde özel ödül | ✅ | `lib/core/level_plan.dart` |
+| Oyuncu performansına göre zorluk ayarı | ✅ | `AdaptiveDifficulty` |
+| Modlar: Macera, Sonsuz, Zamana karşı, Zen, Günün bölümü, Haftanın bölümü, 150 meydan okuma | ✅ | `lib/app/screens/home.dart` |
+| Günlük giriş ödülü (7 günlük döngü), seri, şans çarkı, günlük sürpriz, geri dönen oyuncu ödülü | ✅ | `lib/core/daily.dart` |
+| 4 günlük + 7 haftalık görev (tarihe göre otomatik yenilenir), günlük rekor, haftalık kişisel hedef | ✅ | `lib/core/missions.dart` |
+| 200+ başarım (50+ gizli) | ✅ | `lib/core/achievements.dart` |
+| Oyuncu seviyesi 1-500, 5 kademe (Başlangıç → Efsane) | ✅ | `lib/core/progression.dart` |
+| 236 koleksiyon parçası: tema, görünüm, rozet, avatar, çerçeve, efekt | ✅ | `lib/core/collection.dart` |
+| İnternetsiz oyun, otomatik kayıt, 3 yedek + yarım kalan yazmayı kurtarma, checksum, sürüm geçişi, yedek kodu ile dışa/içe aktarma | ✅ | `lib/core/save_store.dart`, `lib/core/save_data.dart` |
+| Uygulama kapanınca bölüme kaldığı yerden devam | ✅ | `resume` |
+| Saat manipülasyonu koruması | ✅ | `lib/core/clock.dart` |
+| Çökme döngüsü algılama → güvenli mod, hata günlüğü, performans ölçümü | ✅ | `lib/core/telemetry.dart` |
+| Acil durum yapılandırması (reklam/satın alma/analitik kapatma) | ✅ | `assets/config/emergency.json` |
+| İzinli, çevrimdışı kuyruklu analitik | ✅ | `AnalyticsQueue` |
+| AdMob: ödüllü + geçiş reklamı, sıklık sınırı, UMP/GDPR rızası, yaş kontrolü | ✅ (test kimlikleri) | `lib/app/services/ads_mobile.dart` |
+| Satın alma: reklamsız, premium, altın, ipucu, başlangıç paketi; doğrulama, geri yükleme, iade, tekrar koruması | ✅ (ürünler mağazada açılmalı) | `lib/core/monetization.dart` |
+| 5 dil (TR, EN, DE, ES, FR), renk körü modu, animasyon azaltma, yazı boyutu, solak düzen, titreşim | ✅ | `lib/core/strings.dart`, Ayarlar |
+| Özgün ikon, splash, ses efektleri, müzik, mağaza görselleri (kodla üretilir) | ✅ | `tool/generate_assets.py` |
+| CI: analiz, testler, APK + AAB, Web; iOS (manuel); haftalık 10.000 bölüm + 24 ay simülasyonu | ✅ | `.github/workflows/` |
+
+## Çalıştırma
 
 ```bash
-flutter create --platforms=android,ios --project-name game_005_sudoku_master .
+pip install pillow && python tool/generate_assets.py   # ikon, splash, ses, mağaza görselleri
+flutter create --platforms=android,ios,web --org com.gamestudio100 --project-name game_005_sudoku_master .
+python tool/patch_platforms.py                         # AdMob id, izinler, uygulama adı
 flutter pub get
-flutter analyze --fatal-infos
+dart run flutter_launcher_icons && dart run flutter_native_splash:create
 flutter test
-flutter build apk --debug
+flutter run                                            # veya: flutter run -d chrome
 ```
 
-GitHub Actions covers Flutter quality and Android debug APK; an optional
-workflow checks unsigned Android AAB and iOS compilation. Passing CI does not
-substitute physical-device testing, App Store signing or store approval.
+Uzun testler: `flutter test --dart-define=LONG=true test/long_run_test.dart test/soak_test.dart`
 
-## Monetization and privacy
+## Yayın öncesi yapılacaklar
 
-No ad SDK, purchase screen, tracking or account collection in the gameplay UI.
-The pre-existing monetization policy modules are retained for later integration
-but are not wired to real advertising/billing. A functioning purchase flow must
-not be represented as complete without verified store/backend infrastructure.
-
-See `docs/RELEASE_READINESS.md` and the repository's `/issues/1` for acceptance.
+`docs/RELEASE.md` dosyasına bak: AdMob kimlikleri, mağaza ürünleri, imzalama anahtarları, gizlilik politikası adresi.
